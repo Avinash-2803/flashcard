@@ -1,70 +1,89 @@
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const Dashboard = () => {
     const [flashcards, setFlashcards] = useState([]);
-    const [formData, setFormData] = useState({ question: '', answer: '' });
+    const [question, setQuestion] = useState('');
+    const [answer, setAnswer] = useState('');
     const [editId, setEditId] = useState(null);
 
     useEffect(() => {
-        axios.get('http://localhost:5000/api/flashcards')
-            .then(response => setFlashcards(response.data))
-            .catch(error => console.error('Error fetching flashcards:', error));
+        fetchFlashcards();
     }, []);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (editId) {
-            axios.put(`http://localhost:5000/api/flashcards/${editId}`, formData)
-                .then(() => {
-                    setFlashcards(flashcards.map(fc => fc.id === editId ? { ...fc, ...formData } : fc));
-                    setEditId(null);
-                });
-        } else {
-            axios.post('http://localhost:5000/api/flashcards', formData)
-                .then(() => {
-                    setFlashcards([...flashcards, formData]);
-                });
+    const fetchFlashcards = async () => {
+        try {
+            const response = await axios.get('http://localhost:5000/api/flashcards');
+            setFlashcards(response.data);
+        } catch (error) {
+            console.error('Error fetching flashcards:', error);
         }
-        setFormData({ question: '', answer: '' });
     };
 
-    const handleDelete = (id) => {
-        axios.delete(`http://localhost:5000/api/flashcards/${id}`)
-            .then(() => {
-                setFlashcards(flashcards.filter(fc => fc.id !== id));
-            });
+    const handleAddFlashcard = async () => {
+        try {
+            await axios.post('http://localhost:5000/api/flashcards', { question, answer });
+            setQuestion('');
+            setAnswer('');
+            fetchFlashcards();
+        } catch (error) {
+            console.error('Error adding flashcard:', error);
+        }
     };
 
-    const handleEdit = (id) => {
-        const cardToEdit = flashcards.find(fc => fc.id === id);
-        setFormData({ question: cardToEdit.question, answer: cardToEdit.answer });
-        setEditId(id);
+    const handleEditFlashcard = async () => {
+        try {
+            await axios.put(`http://localhost:5000/api/flashcards/${editId}`, { question, answer });
+            setQuestion('');
+            setAnswer('');
+            setEditId(null);
+            fetchFlashcards();
+        } catch (error) {
+            console.error('Error updating flashcard:', error);
+        }
+    };
+
+    const handleDeleteFlashcard = async (id) => {
+        try {
+            await axios.delete(`http://localhost:5000/api/flashcards/${id}`);
+            fetchFlashcards();
+        } catch (error) {
+            console.error('Error deleting flashcard:', error);
+        }
     };
 
     return (
         <div>
-            <form onSubmit={handleSubmit}>
+            <h1>Flashcard Dashboard</h1>
+            <div>
                 <input
                     type="text"
                     placeholder="Question"
-                    value={formData.question}
-                    onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
                 />
                 <input
                     type="text"
                     placeholder="Answer"
-                    value={formData.answer}
-                    onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
                 />
-                <button type="submit">{editId ? 'Update' : 'Add'} Flashcard</button>
-            </form>
+                <button onClick={editId ? handleEditFlashcard : handleAddFlashcard}>
+                    {editId ? 'Update Flashcard' : 'Add Flashcard'}
+                </button>
+            </div>
             <ul>
-                {flashcards.map(flashcard => (
-                    <li key={flashcard.id}>
-                        {flashcard.question} - {flashcard.answer}
-                        <button onClick={() => handleEdit(flashcard.id)}>Edit</button>
-                        <button onClick={() => handleDelete(flashcard.id)}>Delete</button>
+                {flashcards.map(fc => (
+                    <li key={fc.id}>
+                        <strong>Question:</strong> {fc.question} <br />
+                        <strong>Answer:</strong> {fc.answer}
+                        <button onClick={() => { setEditId(fc.id); setQuestion(fc.question); setAnswer(fc.answer); }}>
+                            Edit
+                        </button>
+                        <button onClick={() => handleDeleteFlashcard(fc.id)}>
+                            Delete
+                        </button>
                     </li>
                 ))}
             </ul>
